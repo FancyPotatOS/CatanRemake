@@ -1,0 +1,10 @@
+CatanRemake.sln
+.git
+.vs
+CatanRemake/bin
+CatanRemake/obj
+CatanRemake/app.manifest
+CatanRemake/CatanRemake.csproj
+CatanRemake/Content/bin
+CatanRemake/Content/obj
+CatanRemake/Content/Content.mgcb
