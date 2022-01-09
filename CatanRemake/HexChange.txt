@@ -1,0 +1,18 @@
+
+Hexagon Offsets
+(0, 0) MIDDLE
+(2, -12) DOWN
+(-2,12) UP
+(15, -6) DOWNRIGHT
+(-13, -6) DOWNLEFT
+(-15, 6) UPLEFT
+(13, 6) UPRIGHT
+
+Corner Offsets
+(-6, -6) UPLEFTPOINT
+(4, -5) UPRIGHTPOINT
+
+Edge Offsets
+(-1, -6) UPEDGE
+(8 , -3) UPRIGHTEDGE
+(-8, -3) UPLEFTEDGE
