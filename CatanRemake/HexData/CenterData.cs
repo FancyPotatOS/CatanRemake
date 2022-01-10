@@ -11,6 +11,9 @@ namespace CatanRemake.HexData
         // Number to be rolled. -1 for no number (desert)
         public int number = -1;
 
+        // Whether has robber
+        public bool hasRobber = false;
+
         public CenterData() { }
     }
 }
