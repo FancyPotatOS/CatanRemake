@@ -14,7 +14,7 @@ namespace CatanRemake
     {
         public static ContentManager CONTENT;
 
-        private GraphicsDeviceManager _graphics;
+        readonly private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
         const int hexEdgeSize = 5;
@@ -34,6 +34,9 @@ namespace CatanRemake
         public static readonly Color[] colors = { Color.Transparent, WHITE, RED, BLUE, GREEN, YELLOW, ORANGE, /** /BROWN,/**/ PURPLE, CYAN, PINK };
 
         public static readonly Dictionary<string, Texture2D> texs = new Dictionary<string, Texture2D>();
+
+        public const int hexArtCount = 17;
+        public const int hexArtStart = 4;
         static readonly string[] allTexNames = new string[]
         {
             "Player1",
@@ -64,13 +67,14 @@ namespace CatanRemake
             "U_R",
             "U_D_L_Point",
             "U_D_R_Point",
-            "wp"
+            "wp",
+
+
         };
 
         Texture2D[] players;
 
         Texture2D blank;
-        Texture2D[] tiles;
 
         Texture2D U_D;
         Texture2D U_L;
@@ -115,13 +119,6 @@ namespace CatanRemake
             players = new Texture2D[4];
             for (int i = 0; i < 4; i++)
                 players[i] = texs["Player" + (i + 1)];
-
-            tiles = new Texture2D[allTexNames.Length - 10];
-
-            for (int i = 4; i < allTexNames.Length - 6; i++)
-            {
-                tiles[i - 4] = texs[allTexNames[i]];
-            }
             
             blank = CONTENT.Load<Texture2D>("Blank");
 
@@ -436,7 +433,7 @@ namespace CatanRemake
             Point size = new Point(tileSize * scale, tileSize * scale);
             Rectangle bound = new Rectangle(pos, size);
 
-            _spriteBatch.Draw(hex, bound, Color.White);
+            _spriteBatch.Draw(hex, bound, c);
         }
 
         // Get position hex will be drawn
@@ -462,7 +459,7 @@ namespace CatanRemake
                         int val = (int)(ValueNoise.ValueNoise.Noise2D((double)i / 2.5, (double)j / 2.5) * tiles.Length);
                         hex.GetAt(i, j).tileID = val;
                         /**/
-                        hex.GetAt(i, j).tex = allTexNames[4 + (int)(rng.NextDouble() * tiles.Length)];
+                        hex.GetAt(i, j).tex = allTexNames[4 + (int)(rng.NextDouble() * hexArtCount)];
                         /**/
                     }
                 }
