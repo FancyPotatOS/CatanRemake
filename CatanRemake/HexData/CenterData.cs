@@ -13,7 +13,5 @@ namespace CatanRemake.HexData
 
         // Whether has robber
         public bool hasRobber = false;
-
-        public CenterData() { }
     }
 }

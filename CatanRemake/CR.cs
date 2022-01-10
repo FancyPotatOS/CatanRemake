@@ -69,7 +69,47 @@ namespace CatanRemake
             "U_D_R_Point",
             "wp",
 
+            "numbers_dot/token",
+            "numbers_dot/1",
+            "numbers_dot/2",
+            "numbers_dot/3",
+            "numbers_dot/4",
+            "numbers_dot/5",
+            "numbers_dot/6",
+            "numbers_dot/7",
+            "numbers_dot/8",
+            "numbers_dot/9",
+            "numbers_dot/10",
+            "numbers_dot/11",
+            "numbers_dot/12",
 
+            "numbers_special/token",
+            "numbers_special/1",
+            "numbers_special/2",
+            "numbers_special/3",
+            "numbers_special/4",
+            "numbers_special/5",
+            "numbers_special/6",
+            "numbers_special/7",
+            "numbers_special/8",
+            "numbers_special/9",
+            "numbers_special/10",
+            "numbers_special/11",
+            "numbers_special/12",
+
+            "numbers_warped/token",
+            "numbers_warped/1",
+            "numbers_warped/2",
+            "numbers_warped/3",
+            "numbers_warped/4",
+            "numbers_warped/5",
+            "numbers_warped/6",
+            "numbers_warped/7",
+            "numbers_warped/8",
+            "numbers_warped/9",
+            "numbers_warped/10",
+            "numbers_warped/11",
+            "numbers_warped/12"
         };
 
         Texture2D[] players;
@@ -169,32 +209,72 @@ namespace CatanRemake
             }
             if (newKeys.Contains(Keys.U))
             {
+                HexagonGrid<CenterData, EdgeData, CornerData>.Corners[] dir =
+                    new HexagonGrid<CenterData, EdgeData, CornerData>.Corners[]
+                {
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNLEFT,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNRIGHT,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.LEFT,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.RIGHT,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPLEFT,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPRIGHT
+                };
+
                 for (int i = 0; i < hex.arrSize; i++)
                 {
                     for (int j = hex.range[i][0]; j <= hex.range[i][1]; j++)
                     {
-                        HexagonGrid<CenterData, EdgeData, CornerData>.Corners[] dir = new HexagonGrid<CenterData, EdgeData, CornerData>.Corners[] { HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNLEFT, HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNRIGHT, HexagonGrid<CenterData, EdgeData, CornerData>.Corners.LEFT, HexagonGrid<CenterData, EdgeData, CornerData>.Corners.RIGHT, HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPLEFT, HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPRIGHT };
 
-                        // Random color in colors
-                        CornerData cd; cd.settlementID = (int)(rng.NextDouble() * (colors.Length - 1) + 1);
+                        // Choose a random direction
                         HexagonGrid<CenterData, EdgeData, CornerData>.Corners randDir = dir[(int)(rng.NextDouble() * dir.Length)];
 
+                        // Random color in colors
+                        CornerData cd = new CornerData
+                        {
+                            hasSettlement = true,
+                            playerID = (int)(rng.NextDouble() * (colors.Length - 1) + 1)
+                        };
                         hex.SetAtCorner(cd, i, j, randDir);
                     }
                 }
             }
             if (newKeys.Contains(Keys.I))
             {
+                HexagonGrid<CenterData, EdgeData, CornerData>.Edges[] dir =
+                {
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPLEFT,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UP,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPRIGHT,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNLEFT,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWN,
+                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNRIGHT
+                };
+
                 for (int i = 0; i < hex.arrSize; i++)
                 {
                     for (int j = hex.range[i][0]; j <= hex.range[i][1]; j++)
                     {
-                        HexagonGrid<CenterData, EdgeData, CornerData>.Edges[] dir = { HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPLEFT, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UP, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPRIGHT, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNLEFT, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWN, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNRIGHT };
 
                         // Random color in colors
-                        EdgeData ed; ed.roadID = (int)(rng.NextDouble()*(colors.Length - 1) + 1);
+                        EdgeData ed; ed.roadID = (int)(rng.NextDouble() * (colors.Length - 1) + 1);
                         HexagonGrid<CenterData, EdgeData, CornerData>.Edges randDir = dir[(int)(rng.NextDouble() * dir.Length)];
                         hex.SetAtEdge(ed, i, j, randDir);
+                    }
+                }
+            }
+            if (newKeys.Contains(Keys.O))
+            {
+                for (int i = 0; i < hex.arrSize; i++)
+                {
+                    for (int j = hex.range[i][0]; j <= hex.range[i][1]; j++)
+                    {
+                        if (rng.NextDouble() > 0.80)
+                        {
+                            int rangeStart = 2;
+                            int rangeSize= 10;
+
+                            hex.GetAt(i, j).number = (int)(rng.NextDouble() * rangeSize + rangeStart);
+                        }
                     }
                 }
             }
@@ -228,6 +308,20 @@ namespace CatanRemake
                 }
             }
 
+            /*  Draw every token    */
+            for (int j = hex.arrSize - 1; -1 < j; j--)
+            {
+                for (int i = 0; i < hex.arrSize; i++)
+                {
+                    if (hex.InRange(i, j))
+                    {
+                        DrawToken(i, j, start, Color.White);
+                    }
+                }
+            }
+
+            /**/
+
             /*  Draw every Edge  */
             for (int j = hex.arrSize - 1; -1 < j; j--)
             {
@@ -236,7 +330,15 @@ namespace CatanRemake
                     if (hex.InRange(i, j))
                     {
                         // Draw top 3 hexes
-                        HexagonGrid<CenterData, EdgeData, CornerData>.Edges[] dir = { HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPLEFT, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UP, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPRIGHT, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNLEFT, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWN, HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNRIGHT };
+                        HexagonGrid<CenterData, EdgeData, CornerData>.Edges[] dir = 
+                        { 
+                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPLEFT, 
+                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UP, 
+                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPRIGHT, 
+                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNLEFT, 
+                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWN, 
+                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNRIGHT 
+                        };
 
                         for (int y = 0; y < dir.Length; y++)
                         {
@@ -268,11 +370,11 @@ namespace CatanRemake
 
                         for (int y = 0; y < dir.Length; y++)
                         {
-                            int val = hex.GetAtCorner(i, j, dir[y]).settlementID;
-                            if (val == 0)
+                            CornerData corner = hex.GetAtCorner(i, j, dir[y]);
+                            if (!corner.hasSettlement)
                                 continue;
                             else
-                                DrawCorner(i, j, start, dir[y], colors[val]);
+                                DrawCorner(i, j, start, dir[y], colors[corner.playerID]);
                         }
                     }
                 }
@@ -425,6 +527,23 @@ namespace CatanRemake
             Texture2D tex = players[playerIndex];
 
             _spriteBatch.Draw(tex, bound, c);
+        }
+
+        public void DrawToken(int i, int j, Point start, Color c)
+        {
+            Point pos = GetDrawPos(i, j, start);
+            // Size of tile
+            Point size = new Point(tileSize * scale, (int)(tileSize * scale / 1.75f));
+            Rectangle bound = new Rectangle(pos, size);
+
+            CenterData cd = hex.GetAt(i, j);
+            if (cd.number != -1)
+            {
+                string texName = "numbers_dot/" + ((cd.number == 0) ? "token" : "" + cd.number);
+                Texture2D tex = texs[texName];
+
+                _spriteBatch.Draw(tex, bound, c);
+            }
         }
 
         public void DrawHex(Texture2D hex, int i, int j, Point start, Color c)

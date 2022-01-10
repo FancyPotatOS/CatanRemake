@@ -6,6 +6,13 @@ namespace CatanRemake.HexData
 {
     public struct CornerData
     {
-        public int settlementID;
+        // Whether it is a settlement
+        public bool hasSettlement;
+
+        // Id of owner
+        public int playerID;
+
+        // Whether a city or not
+        public bool isCity;
     }
 }
