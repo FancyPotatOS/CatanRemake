@@ -1,5 +1,6 @@
 ﻿using CatanRemake.HexData;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
@@ -11,6 +12,8 @@ namespace CatanRemake
 {
     public class CR : Game
     {
+        public static ContentManager CONTENT;
+
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
@@ -29,6 +32,40 @@ namespace CatanRemake
         public static readonly Color PINK = new Color(240 / 255f, 101 / 255f, 205 / 255f);
 
         public static readonly Color[] colors = { Color.Transparent, WHITE, RED, BLUE, GREEN, YELLOW, ORANGE, /** /BROWN,/**/ PURPLE, CYAN, PINK };
+
+        public static readonly Dictionary<string, Texture2D> texs = new Dictionary<string, Texture2D>();
+        static readonly string[] allTexNames = new string[]
+        {
+            "Player1",
+            "Player2",
+            "Player3",
+            "Player4",
+
+            "Blank",
+            "Desert",
+            "Forest1",
+            "Forest2",
+            "Forest3",
+            "Mountain1",
+            "Mountain2",
+            "Mountain3",
+            "Field1",
+            "Field2",
+            "Field3",
+            "Farm1",
+            "Farm2",
+            "Farm3",
+            "Mesa1",
+            "Mesa2",
+            "Mesa3",
+
+            "U_D",
+            "U_L",
+            "U_R",
+            "U_D_L_Point",
+            "U_D_R_Point",
+            "wp"
+        };
 
         Texture2D[] players;
 
@@ -55,6 +92,48 @@ namespace CatanRemake
 
         public CR()
         {
+
+           _graphics = new GraphicsDeviceManager(this);
+            Content.RootDirectory = "CONTENT";
+            IsMouseVisible = true;
+        }
+
+        protected override void Initialize()
+        {
+            base.Initialize();
+        }
+
+        protected override void LoadContent()
+        {
+            CONTENT = Content;
+
+            foreach (string name in allTexNames)
+            {
+                texs.Add(name, CONTENT.Load<Texture2D>(name));
+            }
+
+            players = new Texture2D[4];
+            for (int i = 0; i < 4; i++)
+                players[i] = texs["Player" + (i + 1)];
+
+            tiles = new Texture2D[allTexNames.Length - 10];
+
+            for (int i = 4; i < allTexNames.Length - 6; i++)
+            {
+                tiles[i - 4] = texs[allTexNames[i]];
+            }
+            
+            blank = CONTENT.Load<Texture2D>("Blank");
+
+            U_D = texs["U_D"];
+            U_L = texs["U_L"];
+            U_R = texs["U_R"];
+
+            U_D_L_Point = texs["U_D_L_Point"];
+            U_D_R_Point = texs["U_D_R_Point"];
+
+            wp = texs["wp"];
+
             /*  Initialize hex data */
             for (int j = hex.arrSize - 1; -1 < j; j--)
             {
@@ -67,60 +146,8 @@ namespace CatanRemake
                     }
                 }
             }
+            ResetBoard();
             /**/
-
-            _graphics = new GraphicsDeviceManager(this);
-            Content.RootDirectory = "Content";
-            IsMouseVisible = true;
-        }
-
-        protected override void Initialize()
-        {
-            base.Initialize();
-        }
-
-        protected override void LoadContent()
-        {
-            players = new Texture2D[] { Content.Load<Texture2D>("Player1"), Content.Load<Texture2D>("Player2"), Content.Load<Texture2D>("Player3"), Content.Load<Texture2D>("Player4") };
-
-            blank = Content.Load<Texture2D>("Blank");
-
-            tiles = new Texture2D[] {
-                    Content.Load<Texture2D>("Blank")/**/,
-
-                    Content.Load<Texture2D>("Desert")/**/,
-
-                    Content.Load<Texture2D>("Forest1"),
-                    Content.Load<Texture2D>("Forest2"),
-                    Content.Load<Texture2D>("Forest3"), 
-                    /**/
-                    Content.Load<Texture2D>("Water1"),
-                    Content.Load<Texture2D>("Water2"),
-                    Content.Load<Texture2D>("Water3"),
-                    /**/
-                    Content.Load<Texture2D>("Mountain1"),
-                    Content.Load<Texture2D>("Mountain2"),
-                    Content.Load<Texture2D>("Mountain3"),
-                    Content.Load<Texture2D>("Field1"),
-                    Content.Load<Texture2D>("Field2"),
-                    Content.Load<Texture2D>("Field3"),
-                    Content.Load<Texture2D>("Farm1"),
-                    Content.Load<Texture2D>("Farm2"),
-                    Content.Load<Texture2D>("Farm3"),
-                    Content.Load<Texture2D>("Mesa1"),
-                    Content.Load<Texture2D>("Mesa2"),
-                    Content.Load<Texture2D>("Mesa3")
-                    /**/
-                };
-
-            U_D = Content.Load<Texture2D>("U_D");
-            U_L = Content.Load<Texture2D>("U_L");
-            U_R = Content.Load<Texture2D>("U_R");
-
-            U_D_L_Point = Content.Load<Texture2D>("U_D_L_Point");
-            U_D_R_Point = Content.Load<Texture2D>("U_D_R_Point");
-
-            wp = Content.Load<Texture2D>("wp");
 
             _spriteBatch = new SpriteBatch(GraphicsDevice);
         }
@@ -139,59 +166,9 @@ namespace CatanRemake
             if (newKeys.Contains(Keys.Q))
                 Exit();
 
-            if (newKeys.Contains(Keys.R))
-            {
-                tiles = new Texture2D[] {
-                    Content.Load<Texture2D>("Blank")/**/,
-
-                    Content.Load<Texture2D>("Desert")/**/,
-
-                    Content.Load<Texture2D>("Forest1"),
-                    Content.Load<Texture2D>("Forest2"),
-                    Content.Load<Texture2D>("Forest3"), 
-                    /**/
-                    Content.Load<Texture2D>("Water1"), 
-                    Content.Load<Texture2D>("Water2"), 
-                    Content.Load<Texture2D>("Water3"),
-                    /**/
-                    Content.Load<Texture2D>("Mountain1"),
-                    Content.Load<Texture2D>("Mountain2"),
-                    Content.Load<Texture2D>("Mountain3"),
-                    Content.Load<Texture2D>("Field1"),
-                    Content.Load<Texture2D>("Field2"),
-                    Content.Load<Texture2D>("Field3"),
-                    Content.Load<Texture2D>("Farm1"),
-                    Content.Load<Texture2D>("Farm2"),
-                    Content.Load<Texture2D>("Farm3"),
-                    Content.Load<Texture2D>("Mesa1"),
-                    Content.Load<Texture2D>("Mesa2"),
-                    Content.Load<Texture2D>("Mesa3")
-                    /**/
-                };
-
-            }
-
             if (newKeys.Contains(Keys.Y))
             {
-                seed++;
-                RNG.seed = seed;
-
-                // Fill hex with 0 - 3
-                for (int i = 0; i < hex.arrSize; i++)
-                {
-                    for (int j = 0; j < hex.arrSize; j++)
-                    {
-                        if (hex.InRange(i, j))
-                        {
-                            /** /
-                            int val = (int)(ValueNoise.ValueNoise.Noise2D((double)i / 2.5, (double)j / 2.5) * tiles.Length);
-                            hex.GetAt(i, j).tileID = val;
-                            /**/
-                            hex.GetAt(i, j).tileID = (int)(rng.NextDouble() * tiles.Length);
-                            /**/
-                        }
-                    }
-                }
+                ResetBoard();
             }
             if (newKeys.Contains(Keys.U))
             {
@@ -206,31 +183,6 @@ namespace CatanRemake
                         HexagonGrid<CenterData, EdgeData, CornerData>.Corners randDir = dir[(int)(rng.NextDouble() * dir.Length)];
 
                         hex.SetAtCorner(cd, i, j, randDir);
-                    }
-                }
-            }
-            if (newKeys.Contains(Keys.T))
-            {
-                for (int i = 0; i < hex.arrSize; i++)
-                {
-                    for (int j = hex.range[i][0]; j <= hex.range[i][1]; j++)
-                    {
-                        if (rng.NextDouble() < 0.85)
-                            continue;
-
-                        CenterData cd = hex.GetAt(i, j);
-
-                        // Choose random amount to add (will be 0 if can't add)
-                        int count = (int)(rng.NextDouble() * (4 - cd.next));
-
-                        for (int ii = 0; ii < count; ii++)
-                        {
-                            // Set random color id
-                            cd.players[cd.next] = (int)(rng.NextDouble() * (colors.Length - 1) + 1);
-
-                            // Go to next player
-                            cd.next++;
-                        }
                     }
                 }
             }
@@ -274,7 +226,7 @@ namespace CatanRemake
                     if (hex.InRange(i, j))
                     {
                         // Draw from code
-                        DrawHex(tiles[hex.GetAt(i, j).tileID], i, j, start, Color.White);
+                        DrawHex(texs[hex.GetAt(i, j).tex], i, j, start, Color.White);
                     }
                 }
             }
@@ -329,7 +281,7 @@ namespace CatanRemake
                 }
             }
 
-            /*  Draw every player    */
+            /*  Draw every player    * /
             for (int j = hex.arrSize - 1; -1 < j; j--)
             {
                 for (int i = 0; i < hex.arrSize; i++)
@@ -454,12 +406,16 @@ namespace CatanRemake
 
         public void DrawPlayers(int i, int j, Point start)
         {
+            /**/
+            return;
+            /** /
             CenterData cd = hex.GetAt(i, j);
 
             for (int ii = 0; ii < cd.next; ii++)
             {
                 DrawPlayer(i, j, start, colors[cd.players[ii]], ii);
             }
+            /**/
         }
 
         public void DrawPlayer(int i, int j, Point start, Color c, int playerIndex)
@@ -488,6 +444,29 @@ namespace CatanRemake
         {
             int[] URD = hex.GetURD(i, j);
             return Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPRIGHT, URD[0] * scale) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.DOWN, URD[1] * scale) + start;
+        }
+
+        public void ResetBoard()
+        {
+            seed++;
+            RNG.seed = seed;
+
+            // Fill hex with 0 - 3
+            for (int i = 0; i < hex.arrSize; i++)
+            {
+                for (int j = 0; j < hex.arrSize; j++)
+                {
+                    if (hex.InRange(i, j))
+                    {
+                        /** /
+                        int val = (int)(ValueNoise.ValueNoise.Noise2D((double)i / 2.5, (double)j / 2.5) * tiles.Length);
+                        hex.GetAt(i, j).tileID = val;
+                        /**/
+                        hex.GetAt(i, j).tex = allTexNames[4 + (int)(rng.NextDouble() * tiles.Length)];
+                        /**/
+                    }
+                }
+            }
         }
 
         public static Point Multiply(Point p, int c)
