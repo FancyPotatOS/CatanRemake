@@ -89,12 +89,20 @@ namespace CatanRemake
                 Content.Load<Texture2D>("Forest1"), 
                 Content.Load<Texture2D>("Forest2"), 
                 Content.Load<Texture2D>("Forest3"), 
+                /** /
                 Content.Load<Texture2D>("Water1"), 
                 Content.Load<Texture2D>("Water2"), 
-                Content.Load<Texture2D>("Water3"), 
-                Content.Load<Texture2D>("Mountain1"), 
-                Content.Load<Texture2D>("Mountain2"), 
-                Content.Load<Texture2D>("Mountain3"), 
+                Content.Load<Texture2D>("Water3"),
+                /**/
+                Content.Load<Texture2D>("Mountain1"),
+                Content.Load<Texture2D>("Mountain2"),
+                Content.Load<Texture2D>("Mountain3"),
+                Content.Load<Texture2D>("Field1"),
+                Content.Load<Texture2D>("Field2"),
+                Content.Load<Texture2D>("Field3"),
+                Content.Load<Texture2D>("Farm1"),
+                Content.Load<Texture2D>("Farm2"),
+                Content.Load<Texture2D>("Farm3"),
                 Content.Load<Texture2D>("Mesa1"), 
                 Content.Load<Texture2D>("Mesa2"), 
                 Content.Load<Texture2D>("Mesa3") };
@@ -124,6 +132,33 @@ namespace CatanRemake
 
             if (newKeys.Contains(Keys.Q))
                 Exit();
+
+            if (newKeys.Contains(Keys.R))
+            {
+                tiles = new Texture2D[] {
+                    Content.Load<Texture2D>("Forest1"),
+                    Content.Load<Texture2D>("Forest2"),
+                    Content.Load<Texture2D>("Forest3"), 
+                    /** /
+                    Content.Load<Texture2D>("Water1"), 
+                    Content.Load<Texture2D>("Water2"), 
+                    Content.Load<Texture2D>("Water3"),
+                    /**/
+                    Content.Load<Texture2D>("Mountain1"),
+                    Content.Load<Texture2D>("Mountain2"),
+                    Content.Load<Texture2D>("Mountain3"),
+                    Content.Load<Texture2D>("Field1"),
+                    Content.Load<Texture2D>("Field2"),
+                    Content.Load<Texture2D>("Field3"),
+                    Content.Load<Texture2D>("Farm1"),
+                    Content.Load<Texture2D>("Farm2"),
+                    Content.Load<Texture2D>("Farm3"),
+                    Content.Load<Texture2D>("Mesa1"),
+                    Content.Load<Texture2D>("Mesa2"),
+                    Content.Load<Texture2D>("Mesa3")
+                };
+
+            }
 
             if (newKeys.Contains(Keys.Y))
             {
