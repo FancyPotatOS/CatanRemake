@@ -1,4 +1,5 @@
 ﻿using CatanRemake.HexData;
+using CatanRemake.States;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -12,14 +13,13 @@ namespace CatanRemake
 {
     public class CR : Game
     {
+        /*  Game Classes   */
         public static ContentManager CONTENT;
 
-        readonly private GraphicsDeviceManager _graphics;
-        private SpriteBatch _spriteBatch;
+        public static GraphicsDeviceManager _graphics;
+        public static SpriteBatch _spriteBatch;
 
-        const int hexEdgeSize = 5;
-        public static HexagonGrid<CenterData, EdgeData, CornerData> hex = new HexagonGrid<CenterData, EdgeData, CornerData>(hexEdgeSize);
-
+        /*  Constants   */
         public static readonly Color WHITE = new Color(1f, 1f, 1f);
         public static readonly Color RED = new Color(209 / 255f, 40 / 255f, 10 / 255f);
         public static readonly Color BLUE = new Color(10 / 255f, 40 / 255f, 209 / 255f);
@@ -33,11 +33,12 @@ namespace CatanRemake
 
         public static readonly Color[] colors = { Color.Transparent, WHITE, RED, BLUE, GREEN, YELLOW, ORANGE, /** /BROWN,/**/ PURPLE, CYAN, PINK };
 
+        /*  Drawing Data*/
         public static readonly Dictionary<string, Texture2D> texs = new Dictionary<string, Texture2D>();
 
         public const int hexArtCount = 17;
         public const int hexArtStart = 4;
-        static readonly string[] allTexNames = new string[]
+        public static readonly string[] allTexNames = new string[]
         {
             "Player1",
             "Player2",
@@ -113,33 +114,31 @@ namespace CatanRemake
         };
 
         Texture2D[] players;
-
         Texture2D blank;
-
-        Texture2D U_D;
-        Texture2D U_L;
-        Texture2D U_R;
-
-        Texture2D U_D_L_Point;
-        Texture2D U_D_R_Point;
-
         Texture2D wp;
 
-        const int scale = 4;
-        const int tileSize = 16;
+        /*  Camera Data */
+        public const int tileSize = 16;
+        public const float scrollSensitivity = 0.008695f;
+        public static float scale = 4;
+        public static int scaleIndex = 2;
+        public static Point cameraPos = Point.Zero;
 
-        long seed;
-
+        /*  RNG Data   */
+        public static long seed;
         public static readonly Random rng = new Random();
 
-        bool square = false;
+        /*  State Constants */
+        IState currState;
+        public const int hexEdgeSize = 5;
 
         public CR()
         {
-
-           _graphics = new GraphicsDeviceManager(this);
+            _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "CONTENT";
             IsMouseVisible = true;
+
+            currState = new Board();
         }
 
         protected override void Initialize()
@@ -162,16 +161,15 @@ namespace CatanRemake
             
             blank = CONTENT.Load<Texture2D>("Blank");
 
-            U_D = texs["U_D"];
-            U_L = texs["U_L"];
-            U_R = texs["U_R"];
-
-            U_D_L_Point = texs["U_D_L_Point"];
-            U_D_R_Point = texs["U_D_R_Point"];
-
             wp = texs["wp"];
 
-            /*  Initialize hex data */
+            // Bottom left of screen
+            Point btmLft = CR.cameraPos + new Point(0, CR._graphics.PreferredBackBufferHeight);
+
+            // Start point of 0, 0 hex
+            cameraPos = btmLft + new Point((int)(2 * CR.scale * CR.texs["Blank"].Width), -(int)(Math.Ceiling(((hexEdgeSize + 2.5d) * HexagonGrid<CenterData, EdgeData, CornerData>.DOWNRIGHT.Y) * CR.scale)));
+
+            /*  Initialize hex data * /
             for (int j = hex.arrSize - 1; -1 < j; j--)
             {
                 for (int i = 0; i < hex.arrSize; i++)
@@ -190,23 +188,98 @@ namespace CatanRemake
         }
 
 
+        public static KeyboardState keyboardState = new KeyboardState();
         public static List<Keys> newKeys = new List<Keys>();
         public static List<Keys> preKeys = new List<Keys>();
         public static List<Keys> accKeys = new List<Keys>();
+        public static MouseState mouseState = new MouseState();
+        public static int scrollStart = mouseState.ScrollWheelValue;
+        public static int scrollLast = mouseState.ScrollWheelValue;
+        public static int scrollNow = mouseState.ScrollWheelValue;
+        public static int scrollDelta = 0;
+        public static Point mouseMoveOrigin = Point.Zero;
+        public static Point mouseMoveCameraOrigin = Point.Zero;
         protected override void Update(GameTime gameTime)
         {
-
-            preKeys = Keyboard.GetState().GetPressedKeys().ToList();
+            /*  Update keyboard information */
+            keyboardState = Keyboard.GetState();
+            preKeys = keyboardState.GetPressedKeys().ToList();
             newKeys = preKeys.FindAll(key => !accKeys.Contains(key));
             accKeys = preKeys;
+
+            /*  Update mouse information*/
+            mouseState = Mouse.GetState();
+
+            scrollLast = scrollNow;
+            scrollNow = mouseState.ScrollWheelValue;
+            scrollDelta = scrollNow - scrollLast;
+            /**/
 
             if (newKeys.Contains(Keys.Q))
                 Exit();
 
+            currState.Update();
+
+            if (preKeys.Contains(Keys.LeftShift))
+            {
+                if (preKeys.Contains(Keys.W))
+                {
+                    cameraPos.Y += 2;
+                }
+                else if (preKeys.Contains(Keys.S))
+                {
+                    cameraPos.Y -= 2;
+                }
+                if (preKeys.Contains(Keys.A))
+                {
+                    cameraPos.X += 2;
+                }
+                else if (preKeys.Contains(Keys.D))
+                {
+                    cameraPos.X -= 2;
+                }
+            }
+
+            if (scrollDelta != 0)
+            {
+                float scaleBefore = scale;
+
+                scale += (scrollDelta > 0 ? 0.5f : -0.5f);
+                scale = Math.Max(0.5f, scale);
+                scale = Math.Min(10f, scale);
+
+                float scaleAfter = scale;
+
+                float scaleDelta = (scaleAfter - scaleBefore) / scaleBefore;
+            }
+
+            // If middle button pressed
+            if (mouseState.RightButton == ButtonState.Pressed)
+            {
+                // If origin not set
+                if (mouseMoveOrigin == Point.Zero)
+                {
+                    // Store origin point
+                    mouseMoveOrigin = mouseState.Position;
+                    
+                    // Save camera before moved
+                    mouseMoveCameraOrigin = cameraPos;
+                }
+
+                Point mouseDelta = (mouseMoveOrigin - mouseState.Position);
+                cameraPos = mouseMoveCameraOrigin - mouseDelta;
+            }
+            else
+            {
+                mouseMoveOrigin = Point.Zero;
+            }
+
+            /** /
             if (newKeys.Contains(Keys.Y))
             {
                 ResetBoard();
             }
+            /** /
             if (newKeys.Contains(Keys.U))
             {
                 HexagonGrid<CenterData, EdgeData, CornerData>.Corners[] dir =
@@ -238,6 +311,7 @@ namespace CatanRemake
                     }
                 }
             }
+            /** /
             if (newKeys.Contains(Keys.I))
             {
                 HexagonGrid<CenterData, EdgeData, CornerData>.Edges[] dir =
@@ -262,6 +336,7 @@ namespace CatanRemake
                     }
                 }
             }
+            /** /
             if (newKeys.Contains(Keys.O))
             {
                 for (int i = 0; i < hex.arrSize; i++)
@@ -278,6 +353,7 @@ namespace CatanRemake
                     }
                 }
             }
+            /**/
 
             base.Update(gameTime);
         }
@@ -289,310 +365,22 @@ namespace CatanRemake
 
             _spriteBatch.Begin(SpriteSortMode.Deferred, null, SamplerState.PointClamp, null, null, null, null);
 
-            // Bottom left of screen
-            Point btmLft = new Point(0, _graphics.PreferredBackBufferHeight);
+            currState.Draw();
 
-            // Start point of 0, 0 hex
-            Point start = btmLft + new Point(2 * scale * blank.Width, -(int)(Math.Ceiling(((hexEdgeSize + 2.5d) * HexagonGrid<CenterData, EdgeData, CornerData>.DOWNRIGHT.Y) * scale)));
+            _spriteBatch.Draw(blank, new Rectangle(new Point(-16, -16) + cameraPos, new Point(32, 32)), Color.White);
 
-            /*  Draw every hexagon   */
-            for (int j = hex.arrSize - 1; -1 < j; j--)
-            {
-                for (int i = 0; i < hex.arrSize; i++)
-                {
-                    if (hex.InRange(i, j))
-                    {
-                        // Draw from code
-                        DrawHex(texs[hex.GetAt(i, j).tex], i, j, start, Color.White);
-                    }
-                }
-            }
-
-            /*  Draw every token    */
-            for (int j = hex.arrSize - 1; -1 < j; j--)
-            {
-                for (int i = 0; i < hex.arrSize; i++)
-                {
-                    if (hex.InRange(i, j))
-                    {
-                        DrawToken(i, j, start, Color.White);
-                    }
-                }
-            }
-
-            /**/
-
-            /*  Draw every Edge  */
-            for (int j = hex.arrSize - 1; -1 < j; j--)
-            {
-                for (int i = 0; i < hex.arrSize; i++)
-                {
-                    if (hex.InRange(i, j))
-                    {
-                        // Draw top 3 hexes
-                        HexagonGrid<CenterData, EdgeData, CornerData>.Edges[] dir = 
-                        { 
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPLEFT, 
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UP, 
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPRIGHT, 
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNLEFT, 
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWN, 
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNRIGHT 
-                        };
-
-                        for (int y = 0; y < dir.Length; y++)
-                        {
-                            int val = hex.GetAtEdge(i, j, dir[y]).roadID;
-                            if (val == 0)
-                                continue;
-                            else
-                                DrawEdge(i, j, start, dir[y], colors[val]);
-                        }
-                    }
-                }
-            }
-
-            /*  Draw every corner    */
-            for (int j = hex.arrSize - 1; -1 < j; j--)
-            {
-                for (int i = 0; i < hex.arrSize; i++)
-                {
-                    if (hex.InRange(i, j))
-                    {
-                        // Draw top 3 hexes
-                        HexagonGrid<CenterData, EdgeData, CornerData>.Corners[] dir = {
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPRIGHT,
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPLEFT,
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Corners.LEFT,
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Corners.RIGHT,
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNRIGHT,
-                            HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNLEFT };
-
-                        for (int y = 0; y < dir.Length; y++)
-                        {
-                            CornerData corner = hex.GetAtCorner(i, j, dir[y]);
-                            if (!corner.hasSettlement)
-                                continue;
-                            else
-                                DrawCorner(i, j, start, dir[y], colors[corner.playerID]);
-                        }
-                    }
-                }
-            }
-
-            /*  Draw every player    * /
-            for (int j = hex.arrSize - 1; -1 < j; j--)
-            {
-                for (int i = 0; i < hex.arrSize; i++)
-                {
-                    if (hex.InRange(i, j))
-                    {
-                        CenterData cd = hex.GetAt(i, j);
-
-                        foreach (int id in cd.players)
-                            DrawPlayers(i, j, start);
-                    }
-                }
-            }
-
-            /**/
-
+            /** /
             // Draw square for fps monitoring
             if (square)
                 _spriteBatch.Draw(wp, new Rectangle(new Point(30, 30), new Point(30, 30)), Color.Black);
             square = !square;
 
+            /**/
+
             _spriteBatch.End();
 
             base.Draw(gameTime);
         }
-
-        // Prints mask corner at i, j hex on topright/topleft corner
-        public void DrawCorner(int i, int j, Point start, HexagonGrid<CenterData, EdgeData, CornerData>.Corners corner, Color c)
-        {
-            Point pos;
-            Texture2D tex;
-            // Determine type of corner
-            if (corner == HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPLEFT)
-            {
-                // Get UPLEFT point for corner
-                pos = GetDrawPos(i, j, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPLEFTPOINT, scale);
-                tex = U_D_L_Point;
-            }
-            else if (corner == HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPRIGHT)
-            {
-                // Get UPRIGHT point for corner
-                pos = GetDrawPos(i, j, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPRIGHTPOINT, scale);
-                tex = U_D_R_Point;
-            }
-            else if (corner == HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNLEFT)
-            {
-                // Get UPLEFT point for corner (i, j - 1)
-                pos = GetDrawPos(i, j - 1, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPLEFTPOINT, scale);
-                tex = U_D_L_Point;
-            }
-            else if (corner == HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNRIGHT)
-            {
-                // Get UPRIGHT point for corner (i, j - 1)
-                pos = GetDrawPos(i, j - 1, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPRIGHTPOINT, scale);
-                tex = U_D_R_Point;
-            }
-            else if (corner == HexagonGrid<CenterData, EdgeData, CornerData>.Corners.RIGHT)
-            {
-
-                // Get UPLEFT point for corner (i + 1, j)
-                pos = GetDrawPos(i + 1, j, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPLEFTPOINT, scale);
-                tex = U_D_L_Point;
-            }
-            // Default to left
-            else
-            {
-                // Get UPRIGHT point for corner (i - 1, j - 1)
-                pos = GetDrawPos(i - 1, j - 1, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPRIGHTPOINT, scale);
-                tex = U_D_R_Point;
-            }
-
-            // Size of tile
-            Point size = new Point(tileSize * scale, tileSize * scale);
-            Rectangle bound = new Rectangle(pos, size);
-
-            _spriteBatch.Draw(tex, bound, c);
-        }
-
-        public void DrawEdge(int i, int j, Point start, HexagonGrid<CenterData, EdgeData, CornerData>.Edges edge, Color c)
-        {
-            Point pos;
-            Texture2D tex;
-            // Determine type of corner
-            if (edge == HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPLEFT)
-            {
-                pos = GetDrawPos(i, j, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPLEFTEDGE, scale);
-                tex = U_L;
-            }
-            else if (edge == HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPRIGHT)
-            {
-                pos = GetDrawPos(i, j, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPRIGHTEDGE, scale);
-                tex = U_R;
-            }
-            else if (edge == HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNLEFT)
-            {
-                pos = GetDrawPos(i - 1, j - 1, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPRIGHTEDGE, scale);
-                tex = U_R;
-            }
-            else if (edge == HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNRIGHT)
-            {
-                pos = GetDrawPos(i + 1, j, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPLEFTEDGE, scale);
-                tex = U_L;
-            }
-            else if (edge == HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UP)
-            {
-                pos = GetDrawPos(i, j, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPEDGE, scale);
-                tex = U_D;
-            }
-            // Default to down
-            else
-            {
-                pos = GetDrawPos(i, j - 1, start) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPEDGE, scale);
-                tex = U_D;
-            }
-
-            // Size of tile
-            Point size = new Point(tileSize * scale, tileSize * scale);
-            Rectangle bound = new Rectangle(pos, size);
-
-            _spriteBatch.Draw(tex, bound, c);
-        }
-
-        public void DrawPlayers(int i, int j, Point start)
-        {
-            /**/
-            return;
-            /** /
-            CenterData cd = hex.GetAt(i, j);
-
-            for (int ii = 0; ii < cd.next; ii++)
-            {
-                DrawPlayer(i, j, start, colors[cd.players[ii]], ii);
-            }
-            /**/
-        }
-
-        public void DrawPlayer(int i, int j, Point start, Color c, int playerIndex)
-        {
-            Point pos = GetDrawPos(i, j, start);
-            // Size of tile
-            Point size = new Point(tileSize * scale, tileSize * scale);
-            Rectangle bound = new Rectangle(pos, size);
-
-            Texture2D tex = players[playerIndex];
-
-            _spriteBatch.Draw(tex, bound, c);
-        }
-
-        public void DrawToken(int i, int j, Point start, Color c)
-        {
-            Point pos = GetDrawPos(i, j, start);
-            // Size of tile
-            Point size = new Point(tileSize * scale, (int)(tileSize * scale / 1.75f));
-            Rectangle bound = new Rectangle(pos, size);
-
-            CenterData cd = hex.GetAt(i, j);
-            if (cd.number != -1)
-            {
-                string texName = "numbers_dot/" + ((cd.number == 0) ? "token" : "" + cd.number);
-                Texture2D tex = texs[texName];
-
-                _spriteBatch.Draw(tex, bound, c);
-            }
-        }
-
-        public void DrawHex(Texture2D hex, int i, int j, Point start, Color c)
-        {
-            Point pos = GetDrawPos(i, j, start);
-            Point size = new Point(tileSize * scale, tileSize * scale);
-            Rectangle bound = new Rectangle(pos, size);
-
-            _spriteBatch.Draw(hex, bound, c);
-        }
-
-        // Get position hex will be drawn
-        public static Point GetDrawPos(int i, int j, Point start)
-        {
-            int[] URD = hex.GetURD(i, j);
-            return Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.UPRIGHT, URD[0] * scale) + Multiply(HexagonGrid<CenterData, EdgeData, CornerData>.DOWN, URD[1] * scale) + start;
-        }
-
-        public void ResetBoard()
-        {
-            seed++;
-            RNG.seed = seed;
-
-            // Fill hex with 0 - 3
-            for (int i = 0; i < hex.arrSize; i++)
-            {
-                for (int j = 0; j < hex.arrSize; j++)
-                {
-                    if (hex.InRange(i, j))
-                    {
-                        /** /
-                        int val = (int)(ValueNoise.ValueNoise.Noise2D((double)i / 2.5, (double)j / 2.5) * tiles.Length);
-                        hex.GetAt(i, j).tileID = val;
-                        /**/
-                        hex.GetAt(i, j).tex = allTexNames[4 + (int)(rng.NextDouble() * hexArtCount)];
-                        /**/
-                    }
-                }
-            }
-        }
-
-        public static Point Multiply(Point p, int c)
-        {
-            return new Point(p.X * c, p.Y * c);
-        }
-
-        public static Point Multiply(Point p, double c)
-        {
-            return new Point((int)(p.X * c), (int)(p.Y * c));
-        }
+        /**/
     }
 }
