@@ -11,6 +11,8 @@ namespace CatanRemake.HexData
         // Number to be rolled. -1 for no number (desert)
         public int number = -1;
 
+        public Card.ResourceType resourceType;
+
         // Whether has robber
         public bool hasRobber = false;
     }
