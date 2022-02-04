@@ -6,7 +6,19 @@ namespace CatanRemake.HexData
     public class CenterData
     {
         public static readonly int[] robberIndex = { -1, -1 };
+
+        public enum HexType
+        {
+            None,
+            Mountain,
+            Field,
+            Farm,
+            Forest,
+            Mesa
+        }
+
         public string tex = "Blank";
+        public HexType type;
 
         // Number to be rolled. -1 for no number (desert)
         public int number = -1;

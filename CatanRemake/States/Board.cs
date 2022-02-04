@@ -4,14 +4,30 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using ValueNoise;
+
 
 namespace CatanRemake.States
 {
     class Board : IState
     {
         public static HexagonGrid<CenterData, EdgeData, CornerData> board;
+
+        // Whose turn it is based on index
+        public static int turn;
+        // String of what is selected right now
+        public static string selected;
+
+        // Index of hex that is being hovered over
+        public static int[] hovered;
+        // Index of card that is selected
+        public static int cardSelect;
+        readonly List<string> cards = new List<string> { 
+            "cards/Mountain1",
+            "cards/Mesa2",
+            "cards/Farm2",
+            "cards/Field3"
+        };
 
         public Board()
         {
@@ -24,24 +40,37 @@ namespace CatanRemake.States
                 {
                     if (board.InRange(i, j))
                     {
+                        CenterData cd = new CenterData();
+                        cd.tex = CR.allTexNames[(int)(CR.rng.NextDouble() * CR.hexArtCount) + CR.hexArtStart];
+                        if (cd.tex != "Desert")
+                            cd.number = (int)(CR.rng.NextDouble() * 11 + 2);
                         // Draw from code
-                        board.SetAt(new CenterData(), i, j);
+                        board.SetAt(cd, i, j);
                     }
                 }
             }
             /**/
 
+            hovered = new int[] { 0, 0 };
+            cardSelect = 0;
+
+            CenterData.robberIndex[0] = 4;
+            CenterData.robberIndex[1] = 4;
+
+            selected = "hex";
         }
 
-        public void Update()
+        public static bool newClick = true;
+        public IState Update()
         {
+            IState shouldReturn = this;
 
-            /**/
+            /** /
             if (CR.newKeys.Contains(Keys.Y))
             {
                 ResetBoard();
             }
-            /**/
+            /** /
             if (CR.newKeys.Contains(Keys.U))
             {
                 HexagonGrid<CenterData, EdgeData, CornerData>.Corners[] dir =
@@ -73,7 +102,7 @@ namespace CatanRemake.States
                     }
                 }
             }
-            /**/
+            /** /
             if (CR.newKeys.Contains(Keys.I))
             {
                 HexagonGrid<CenterData, EdgeData, CornerData>.Edges[] dir =
@@ -98,7 +127,7 @@ namespace CatanRemake.States
                     }
                 }
             }
-            /**/
+            /** /
             if (CR.newKeys.Contains(Keys.O))
             {
                 for (int i = 0; i < board.arrSize; i++)
@@ -115,7 +144,167 @@ namespace CatanRemake.States
                     }
                 }
             }
+
+            /*  Get currently selected hex  */
+            if (CR.preKeys.Contains(Keys.LeftShift))
+            {
+                if (CR.preKeys.Contains(Keys.W))
+                {
+                    CR.cameraPos.Y += (int)CR.scale + 1;
+                }
+                else if (CR.preKeys.Contains(Keys.S))
+                {
+                    CR.cameraPos.Y -= (int)CR.scale + 1;
+                }
+                if (CR.preKeys.Contains(Keys.A))
+                {
+                    CR.cameraPos.X += (int)CR.scale + 1;
+                }
+                else if (CR.preKeys.Contains(Keys.D))
+                {
+                    CR.cameraPos.X -= (int)CR.scale + 1;
+                }
+                if (CR.newKeys.Contains(Keys.Q))
+                {
+                    CR.scale += 0.5f;
+                    CR.scale = Math.Max(5.5f, CR.scale);
+                    CR.scale = Math.Min(10f, CR.scale);
+
+                    CR.UpdateCameraMinMax();
+                }
+                else if (CR.newKeys.Contains(Keys.E))
+                {
+                    CR.scale += -0.5f;
+                    CR.scale = Math.Max(5.5f, CR.scale);
+                    CR.scale = Math.Min(10f, CR.scale);
+
+                    CR.UpdateCameraMinMax();
+                }
+            }
+            else
+            {
+                // Controller keys
+                if (CR.newKeys.Contains(Keys.C))
+                    selected = "cards";
+                if (CR.newKeys.Contains(Keys.B))
+                {
+                    selected = "build";
+                    shouldReturn = new BuildingState(this);
+                }
+                if (CR.newKeys.Contains(Keys.X))
+                    selected = "hex";
+
+                else if (selected == "cards")
+                {
+                    if (CR.newKeys.Contains(Keys.A))
+                    {
+                        cardSelect -= cardSelect == 0 ? 0 : 1;
+
+                    }
+                    else if (CR.newKeys.Contains(Keys.D))
+                    {
+                        cardSelect += cardSelect == cards.Count - 1 ? 0 : 1;
+                    }
+                }
+                else if (selected == "hex")
+                {
+                    if (CR.newKeys.Contains(Keys.Q))
+                        if (board.InRange(hovered[0] - 1, hovered[1]))
+                            hovered[0]--;
+                    if (CR.newKeys.Contains(Keys.D))
+                        if (board.InRange(hovered[0] + 1, hovered[1]))
+                            hovered[0]++;
+                    if (CR.newKeys.Contains(Keys.S))
+                        if (board.InRange(hovered[0], hovered[1] - 1))
+                            hovered[1]--;
+                    if (CR.newKeys.Contains(Keys.W))
+                        if (board.InRange(hovered[0], hovered[1] + 1))
+                            hovered[1]++;
+                    if (CR.newKeys.Contains(Keys.A))
+                        if (board.InRange(hovered[0] - 1, hovered[1] - 1))
+                        { hovered[0]--; hovered[1]--; }
+                    if (CR.newKeys.Contains(Keys.E))
+                        if (board.InRange(hovered[0] + 1, hovered[1] + 1))
+                        { hovered[0]++; hovered[1]++; }
+                }
+            }
+
+            // If clicked
+            if (CR.mouseState.LeftButton == ButtonState.Pressed)
+            {
+                UpdateGUISelection();
+
+                newClick = false;
+            }
+            else
+                newClick = true;
+
             /**/
+
+            return shouldReturn;
+        }
+
+        /*  Update Logic    */
+        public void UpdateGUISelection()
+        {
+            /*  Check if state change is selected*/
+            Point mousePos = CR.mouseState.Position;
+
+            Point topMiddle = new Point(-totalWidth / 2 + CR._graphics.PreferredBackBufferWidth / 2, 0);
+
+            for (int i = 0; i < sm.Length && CR.mouseState.Y < cardSize.Y; i++)
+            {
+                Point offset = new Point((int)(i * offsetI), 0);
+                Point curr = topMiddle + offset;
+
+                if (curr.X <= mousePos.X && mousePos.X < curr.X + cardSize.X)
+                {
+                    selected = accState[i];
+                }
+            }
+
+            /*  Check if hex selection is selected  */
+            if (newClick && HCGUIUSelect.Contains(mousePos) && selected == "hex")
+            {
+                HCGUIUPressCount = 0;
+                if (board.InRange(hovered[0], hovered[1] + 1))
+                    hovered[1]++;
+            }
+            else if (newClick && HCGUIURSelect.Contains(mousePos) && selected == "hex")
+            {
+                HCGUIURPressCount = 0;
+                if (board.InRange(hovered[0] + 1, hovered[1] + 1))
+                { hovered[0]++; hovered[1]++; }
+            }
+            else if (newClick && HCGUIULSelect.Contains(mousePos) && selected == "hex")
+            {
+                HCGUIULPressCount = 0;
+                if (board.InRange(hovered[0] - 1, hovered[1]))
+                    hovered[0]--;
+            }
+            else if (newClick && HCGUIDRSelect.Contains(mousePos) && (selected == "hex" || selected == "cards"))
+            {
+                HCGUIDRPressCount = 0;
+                if (selected == "hex" && board.InRange(hovered[0] + 1, hovered[1]))
+                    hovered[0]++;
+                else
+                    cardSelect += cardSelect == cards.Count - 1 ? 0 : 1;
+
+            }
+            else if (newClick && HCGUIDLSelect.Contains(mousePos) && (selected == "hex" || selected == "cards"))
+            {
+                HCGUIDLPressCount = 0;
+                if (selected == "hex" && board.InRange(hovered[0] - 1, hovered[1] - 1))
+                { hovered[0]--; hovered[1]--; }
+                else
+                    cardSelect -= cardSelect == 0 ? 0 : 1;
+            }
+            else if (newClick && HCGUIDSelect.Contains(mousePos) && selected == "hex")
+            {
+                HCGUIDPressCount = 0;
+                if (board.InRange(hovered[0], hovered[1] - 1))
+                    hovered[1]--;
+            }
         }
 
         public void Draw()
@@ -219,8 +408,33 @@ namespace CatanRemake.States
                     }
                 }
             }
+
+            /*  Draw the robber  */
+            DrawRobber(CR.cameraPos);
+
+            /*  Draw selection border over the hex  */
+
+            DrawHex(CR.texs["Selection"], hovered[0], hovered[1], CR.cameraPos, (selected != "hex" ? Color.DarkGray : Color.White));
+
+            /*  Draw the cards  */
+            int index = 0;
+            foreach (string card in cards)
+            {
+                DrawCard(card, index);
+                index++;
+            }
+
+            /*  Draw markers for the state  */
+            DrawStateMarkers();
+
+            /*  Draw gui for selecting hex and cards    */
+            DrawHexControlGUI();
+
             /**/
         }
+
+
+            /*  Drawing Logic   */
 
         // Prints mask corner at i, j hex on topright/topleft corner
         public void DrawCorner(int i, int j, Point start, HexagonGrid<CenterData, EdgeData, CornerData>.Corners corner, Color c)
@@ -321,6 +535,9 @@ namespace CatanRemake.States
         public void DrawPlayers(int i, int j, Point start)
         {
             /**/
+            i = i + j + start.X;
+            j = i + start.Y;
+            start.X = i + j;
             return;
             /** /
             CenterData cd = board.GetAt(i, j);
@@ -332,16 +549,23 @@ namespace CatanRemake.States
             /**/
         }
 
+        public void DrawRobber(Point start)
+        {
+            int i = CenterData.robberIndex[0];
+            int j = CenterData.robberIndex[1];
 
-            /*  Drawing Logic   */
-        public void DrawPlayer(int i, int j, Point start, Color c, int playerIndex)
+            CenterData cd = board.GetAt(i, j);
+
+            DrawPlayer(i, j, start, Color.White, "Main");
+        }
+        public void DrawPlayer(int i, int j, Point start, Color c, string suffix)
         {
             Point pos = GetDrawPos(i, j, start);
             // Size of tile
             Point size = new Point((int)(CR.tileSize * CR.scale), (int)(CR.tileSize * CR.scale));
             Rectangle bound = new Rectangle(pos, size);
 
-            Texture2D tex = CR.texs["Player" + (playerIndex + 1)];
+            Texture2D tex = CR.texs["Player" + suffix];
 
             CR._spriteBatch.Draw(tex, bound, c);
         }
@@ -371,6 +595,138 @@ namespace CatanRemake.States
             Rectangle bound = new Rectangle(pos, size);
 
             CR._spriteBatch.Draw(hex, bound, c);
+        }
+
+        public void DrawCard(string tex, int index)
+        {
+
+            Point size = new Point(64, 96);
+            size = Multiply(size, 2);
+            Point middle = new Point(CR._graphics.PreferredBackBufferWidth / 2, CR._graphics.PreferredBackBufferHeight);
+
+            float printIndex;
+            if (selected != "cards")
+                printIndex = index;
+            else if (index < cardSelect)
+                printIndex = index - cardSelect - 1;
+            else if (cardSelect < index)
+                printIndex = index - cardSelect + 1;
+            else
+                printIndex = 0;
+            Point offset = new Point((int)(printIndex * (size.X) / 2), selected == "cards" ? 0 : size.Y * 3 / 4);
+
+            middle += offset;
+
+            Rectangle bound = new Rectangle(middle - new Point(size.X / 2, size.Y * 3 / 2), size);
+
+            CR._spriteBatch.Draw(CR.texs[tex], bound, Color.White);
+        }
+
+        public static readonly string[] sm = { "gui/XHex", "gui/CCards", "gui/BBuild" };
+        public static readonly string[] accState = { "hex", "cards", "build" };
+        public static readonly Point cardSize = new Point(128, 128);
+        public static readonly int totalWidth = cardSize.X * (int)(sm.Length * 1.5f);
+        public static readonly float offsetI = cardSize.X * 1.5f;
+        public void DrawStateMarkers()
+        {
+            Point topMiddle = new Point(-totalWidth / 2 + CR._graphics.PreferredBackBufferWidth / 2, 0);     
+
+            for (int i = 0; i < sm.Length; i++)
+            {
+                Point offset = new Point((int)(i * offsetI), 0);
+                Point curr = topMiddle + offset;
+
+                if (selected == accState[i])
+                    curr.Y += cardSize.Y / 2;
+
+                Rectangle bound = new Rectangle(curr, cardSize);
+                CR._spriteBatch.Draw(CR.texs[sm[i]], bound, Color.White);
+            }
+        }
+
+        /**/
+        public static Point topRight = new Point(CR._graphics.PreferredBackBufferWidth, 0);
+        public static readonly int HCGUIScale = 5;
+        public static readonly Point HCGUISize = new Point(CR.tileSize * HCGUIScale, CR.tileSize * HCGUIScale);
+        public static Point HCGUIMiddle = topRight - new Point(HCGUISize.X * 3, -HCGUISize.Y * 2);
+        public static Point HCGUIU = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.UP, HCGUIScale);
+        public static Point HCGUIUR = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.UPRIGHT, HCGUIScale);
+        public static Point HCGUIUL = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.UPLEFT, HCGUIScale);
+        public static Point HCGUIDR = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.DOWNRIGHT, HCGUIScale);
+        public static Point HCGUIDL = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.DOWNLEFT, HCGUIScale);
+        public static Point HCGUID = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.DOWN, HCGUIScale);
+        public static Rectangle HCGUIUSelect = new Rectangle(HCGUIU, new Point(HCGUISize.X, HCGUISize.Y / 2));
+        public static Rectangle HCGUIURSelect = new Rectangle(HCGUIUR, new Point(HCGUISize.X, HCGUISize.Y / 2));
+        public static Rectangle HCGUIULSelect = new Rectangle(HCGUIUL, new Point(HCGUISize.X, HCGUISize.Y / 2));
+        public static Rectangle HCGUIDRSelect = new Rectangle(HCGUIDR, new Point(HCGUISize.X, HCGUISize.Y / 2));
+        public static Rectangle HCGUIDLSelect = new Rectangle(HCGUIDL, new Point(HCGUISize.X, HCGUISize.Y / 2));
+        public static Rectangle HCGUIDSelect = new Rectangle(HCGUID, new Point(HCGUISize.X, HCGUISize.Y / 2));
+        public static int HCGUIUPressCount = 0;
+        public static int HCGUIURPressCount = 0;
+        public static int HCGUIULPressCount = 0;
+        public static int HCGUIDRPressCount = 0;
+        public static int HCGUIDLPressCount = 0;
+        public static int HCGUIDPressCount = 0;
+        /**/
+        public void DrawHexControlGUI()
+        {
+            HCGUIUPressCount++;
+            HCGUIURPressCount++;
+            HCGUIULPressCount++;
+            HCGUIDPressCount++;
+            HCGUIDLPressCount++;
+            HCGUIDRPressCount++;
+            /*  Update values if change in screen   */
+            if (topRight.X != CR._graphics.PreferredBackBufferWidth)
+            {
+                topRight = new Point(CR._graphics.PreferredBackBufferWidth, 0);
+                HCGUIMiddle = topRight - new Point(HCGUISize.X * 3, -HCGUISize.Y * 2);
+                HCGUIU = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.UP, HCGUIScale);
+                HCGUIUR = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.UPRIGHT, HCGUIScale);
+                HCGUIUL = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.UPLEFT, HCGUIScale);
+                HCGUIDR = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.DOWNRIGHT, HCGUIScale);
+                HCGUIDL = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.DOWNLEFT, HCGUIScale);
+                HCGUID = HCGUIMiddle + Multiply(HexagonGrid<int, int, int>.DOWN, HCGUIScale);
+                HCGUIUSelect = new Rectangle(HCGUIU, new Point(HCGUISize.X, HCGUISize.Y / 2));
+                HCGUIURSelect = new Rectangle(HCGUIUR, new Point(HCGUISize.X, HCGUISize.Y / 2));
+                HCGUIULSelect = new Rectangle(HCGUIUL, new Point(HCGUISize.X, HCGUISize.Y / 2));
+                HCGUIDRSelect = new Rectangle(HCGUIDR, new Point(HCGUISize.X, HCGUISize.Y / 2));
+                HCGUIDLSelect = new Rectangle(HCGUIDL, new Point(HCGUISize.X, HCGUISize.Y / 2));
+                HCGUIDSelect = new Rectangle(HCGUID, new Point(HCGUISize.X, HCGUISize.Y / 2));
+    }
+            /**/
+
+            Rectangle bound;
+            Point pos;
+
+            /*  U   */
+            pos = HCGUIU;
+            bound = new Rectangle(pos, HCGUISize);
+            CR._spriteBatch.Draw(CR.texs["gui/Arrow_U"], bound, (selected == "cards" || HCGUIUPressCount <= 10 ? Color.Gray : Color.White));
+            /*  UR */
+            pos = HCGUIUR;
+            bound = new Rectangle(pos, HCGUISize);
+            CR._spriteBatch.Draw(CR.texs["gui/Arrow_UR"], bound, (selected == "cards" || HCGUIURPressCount <= 10 ? Color.Gray : Color.White));
+            /*  UL   */
+            pos = HCGUIUL;
+            bound = new Rectangle(pos, HCGUISize);
+            CR._spriteBatch.Draw(CR.texs["gui/Arrow_UL"], bound, (selected == "cards" || HCGUIULPressCount <= 10 ? Color.Gray : Color.White));
+            /*  Middle  */
+            bound = new Rectangle(HCGUIMiddle, HCGUISize);
+            CR._spriteBatch.Draw(CR.texs["Blank"], bound, Color.White);
+            /*  DR   */
+            pos = HCGUIDR;
+            bound = new Rectangle(pos, HCGUISize);
+            CR._spriteBatch.Draw(CR.texs["gui/Arrow_DR"], bound, (HCGUIDRPressCount <= 10 ? Color.Gray : Color.White));
+            /*  DL   */
+            pos = HCGUIDL;
+            bound = new Rectangle(pos, HCGUISize);
+            CR._spriteBatch.Draw(CR.texs["gui/Arrow_DL"], bound, (HCGUIDLPressCount <= 10 ? Color.Gray : Color.White));
+            /*  D   */
+            pos = HCGUID;
+            bound = new Rectangle(pos, HCGUISize);
+            CR._spriteBatch.Draw(CR.texs["gui/Arrow_D"], bound, (selected == "cards" || HCGUIDPressCount <= 10 ? Color.Gray : Color.White));
+            /**/
         }
 
         // Get position hex will be drawn
@@ -415,7 +771,18 @@ namespace CatanRemake.States
                 }
             }
         }
+
         /**/
+        public bool CanBuild(string thing, List<string> cards)
+        {
+            /// TODO: Build information
+            return true;
+        }
+
+        public static void SetSelected(string sel)
+        {
+            selected = sel;
+        }
 
         /**/
     }
