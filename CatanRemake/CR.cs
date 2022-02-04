@@ -37,13 +37,14 @@ namespace CatanRemake
         public static readonly Dictionary<string, Texture2D> texs = new Dictionary<string, Texture2D>();
 
         public const int hexArtCount = 17;
-        public const int hexArtStart = 4;
+        public const int hexArtStart = 5;
         public static readonly string[] allTexNames = new string[]
         {
             "Player1",
             "Player2",
             "Player3",
             "Player4",
+            "PlayerMain",
 
             "Blank",
             "Desert",
@@ -68,7 +69,51 @@ namespace CatanRemake
             "U_R",
             "U_D_L_Point",
             "U_D_R_Point",
+
+            "cards/Blank",
+            "cards/Desert",
+            "cards/Forest1",
+            "cards/Forest2",
+            "cards/Forest3",
+            "cards/Mountain1",
+            "cards/Mountain2",
+            "cards/Mountain3",
+            "cards/Field1",
+            "cards/Field2",
+            "cards/Field3",
+            "cards/Farm1",
+            "cards/Farm2",
+            "cards/Farm3",
+            "cards/Mesa1",
+            "cards/Mesa2",
+            "cards/Mesa3",
+
+            "cards/Chapel",
+            "cards/GreatHall",
+            "cards/Knight",
+            "cards/Library",
+            "cards/Market",
+            "cards/Monopoly",
+            "cards/RoadBuilding",
+            "cards/University",
+            "cards/YearOfPlenty",
+
+            "gui/CCards",
+            "gui/XHex",
+            "gui/BBuild",
+            "gui/Arrow_U",
+            "gui/Arrow_D",
+            "gui/Arrow_UR",
+            "gui/Arrow_UL",
+            "gui/Arrow_DR",
+            "gui/Arrow_DL",
+
+            "gui/BuildingContainer",
+            "gui/CityContainer",
+
+            "Selection",
             "wp",
+            "gui/Cursor",
 
             "numbers_dot/token",
             "numbers_dot/1",
@@ -120,9 +165,11 @@ namespace CatanRemake
         /*  Camera Data */
         public const int tileSize = 16;
         public const float scrollSensitivity = 0.008695f;
-        public static float scale = 4;
+        public static float scale = 6.5f;
         public static int scaleIndex = 2;
-        public static Point cameraPos = Point.Zero;
+        public static Point cameraPos = new Point(377,594);
+        public static Point cameraMax;
+        public static Point cameraMin;
 
         /*  RNG Data   */
         public static long seed;
@@ -137,12 +184,19 @@ namespace CatanRemake
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "CONTENT";
             IsMouseVisible = true;
+            IsMouseVisible = false;
 
             currState = new Board();
         }
 
         protected override void Initialize()
         {
+            _graphics.PreferredBackBufferWidth *= 2;
+            _graphics.PreferredBackBufferHeight*= 2;
+            _graphics.ApplyChanges();
+
+            UpdateCameraMinMax();
+
             base.Initialize();
         }
 
@@ -164,10 +218,10 @@ namespace CatanRemake
             wp = texs["wp"];
 
             // Bottom left of screen
-            Point btmLft = CR.cameraPos + new Point(0, CR._graphics.PreferredBackBufferHeight);
+            //Point btmLft = CR.cameraPos + new Point(0, CR._graphics.PreferredBackBufferHeight);
 
             // Start point of 0, 0 hex
-            cameraPos = btmLft + new Point((int)(2 * CR.scale * CR.texs["Blank"].Width), -(int)(Math.Ceiling(((hexEdgeSize + 2.5d) * HexagonGrid<CenterData, EdgeData, CornerData>.DOWNRIGHT.Y) * CR.scale)));
+            //cameraPos = btmLft + new Point((int)(2 * CR.scale * CR.texs["Blank"].Width), -(int)(Math.Ceiling(((hexEdgeSize + 2.5d) * HexagonGrid<CenterData, EdgeData, CornerData>.DOWNRIGHT.Y) * CR.scale)));
 
             /*  Initialize hex data * /
             for (int j = hex.arrSize - 1; -1 < j; j--)
@@ -188,17 +242,26 @@ namespace CatanRemake
         }
 
 
+        // Keyboard information
         public static KeyboardState keyboardState = new KeyboardState();
         public static List<Keys> newKeys = new List<Keys>();
         public static List<Keys> preKeys = new List<Keys>();
         public static List<Keys> accKeys = new List<Keys>();
+
+        // Mouse state reference
         public static MouseState mouseState = new MouseState();
-        public static int scrollStart = mouseState.ScrollWheelValue;
+
+        // Scroll value calculations
         public static int scrollLast = mouseState.ScrollWheelValue;
         public static int scrollNow = mouseState.ScrollWheelValue;
         public static int scrollDelta = 0;
+
+        // Change in mouse and camera when moving around with mouse
         public static Point mouseMoveOrigin = Point.Zero;
         public static Point mouseMoveCameraOrigin = Point.Zero;
+
+        // Change in mouse position each frame
+        public static Point mouseDelta = Point.Zero;
         protected override void Update(GameTime gameTime)
         {
             /*  Update keyboard information */
@@ -210,47 +273,30 @@ namespace CatanRemake
             /*  Update mouse information*/
             mouseState = Mouse.GetState();
 
+            // Get change to scroll value
             scrollLast = scrollNow;
             scrollNow = mouseState.ScrollWheelValue;
             scrollDelta = scrollNow - scrollLast;
             /**/
 
-            if (newKeys.Contains(Keys.Q))
+            if (newKeys.Contains(Keys.Escape))
                 Exit();
 
-            currState.Update();
-
-            if (preKeys.Contains(Keys.LeftShift))
-            {
-                if (preKeys.Contains(Keys.W))
-                {
-                    cameraPos.Y += 2;
-                }
-                else if (preKeys.Contains(Keys.S))
-                {
-                    cameraPos.Y -= 2;
-                }
-                if (preKeys.Contains(Keys.A))
-                {
-                    cameraPos.X += 2;
-                }
-                else if (preKeys.Contains(Keys.D))
-                {
-                    cameraPos.X -= 2;
-                }
-            }
+            currState = currState.Update();
 
             if (scrollDelta != 0)
             {
                 float scaleBefore = scale;
 
                 scale += (scrollDelta > 0 ? 0.5f : -0.5f);
-                scale = Math.Max(0.5f, scale);
+                scale = Math.Max(5.5f, scale);
                 scale = Math.Min(10f, scale);
 
                 float scaleAfter = scale;
 
                 float scaleDelta = (scaleAfter - scaleBefore) / scaleBefore;
+
+                UpdateCameraMinMax();
             }
 
             // If middle button pressed
@@ -268,6 +314,9 @@ namespace CatanRemake
 
                 Point mouseDelta = (mouseMoveOrigin - mouseState.Position);
                 cameraPos = mouseMoveCameraOrigin - mouseDelta;
+
+                cameraPos.X = Math.Max(Math.Min(cameraPos.X, cameraMax.X), cameraMin.X);
+                cameraPos.Y = Math.Max(Math.Min(cameraPos.Y, cameraMax.Y), cameraMin.Y);
             }
             else
             {
@@ -367,8 +416,6 @@ namespace CatanRemake
 
             currState.Draw();
 
-            _spriteBatch.Draw(blank, new Rectangle(new Point(-16, -16) + cameraPos, new Point(32, 32)), Color.White);
-
             /** /
             // Draw square for fps monitoring
             if (square)
@@ -377,10 +424,27 @@ namespace CatanRemake
 
             /**/
 
+            _spriteBatch.Draw(texs["gui/Cursor"], new Rectangle(mouseState.Position, new Point(32, 32)), Color.BlueViolet);
+
             _spriteBatch.End();
 
             base.Draw(gameTime);
         }
         /**/
+
+        public static void UpdateCameraMinMax()
+        {
+            Point bound = new Point(_graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
+
+            /** /
+            cameraMax = new Point(bound.X / 2 - (int)(tileSize * scale) + (int)(HexagonGrid<int, int, int>.UPRIGHT.X * Board.board.arrSize * scale), (int)(bound.Y / 2 + HexagonGrid<int, int, int>.DOWNLEFT.Y * Board.board.arrSize * scale * 2));
+            cameraMin = new Point(-bound.X / 2 + (int)(tileSize * scale * 2), -(int)(bound.Y / 2 + HexagonGrid<int, int, int>.UPRIGHT.Y * Board.board.arrSize * scale) + (int)(tileSize * scale));
+            /**/
+
+            Point middle = Board.Multiply(HexagonGrid<int, int, int>.UPRIGHT, 4 * scale);
+
+            cameraMax = new Point(middle.X + bound.X / 2 - (int)(tileSize * scale * 2), middle.Y + bound.Y * 5 / 4);
+            cameraMin = new Point(middle.X - bound.X / 2 + (int)(tileSize * scale * 2), middle.Y + bound.Y / 4);
+        }
     }
 }

@@ -6,7 +6,7 @@ namespace CatanRemake.States
 {
     interface IState
     {
-        public void Update();
+        public IState Update();
 
         public void Draw();
     }
