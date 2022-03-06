@@ -22,16 +22,22 @@ namespace CatanRemake.States
         public static int[] hovered;
         // Index of card that is selected
         public static int cardSelect;
-        readonly List<string> cards = new List<string> { 
-            "cards/Mountain1",
-            "cards/Mesa2",
-            "cards/Farm2",
-            "cards/Field3"
-        };
+        public static Player[] players;
+        public static DiceRoller diceRoller;
 
-        public Board()
+        public Board(int playerCount)
         {
+            diceRoller = new DiceRoller();
+
             board = new HexagonGrid<CenterData, EdgeData, CornerData>(CR.hexEdgeSize);
+
+            players = new Player[playerCount];
+            for (int i = 0; i < players.Length; i++)
+            {
+                players[i] = new Player(i);
+            }
+
+            turn = 0;
 
             /*  Initialize hex data */
             for (int j = board.arrSize - 1; -1 < j; j--)
@@ -64,86 +70,6 @@ namespace CatanRemake.States
         public IState Update()
         {
             IState shouldReturn = this;
-
-            /** /
-            if (CR.newKeys.Contains(Keys.Y))
-            {
-                ResetBoard();
-            }
-            /** /
-            if (CR.newKeys.Contains(Keys.U))
-            {
-                HexagonGrid<CenterData, EdgeData, CornerData>.Corners[] dir =
-                    new HexagonGrid<CenterData, EdgeData, CornerData>.Corners[]
-                {
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNLEFT,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.DOWNRIGHT,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.LEFT,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.RIGHT,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPLEFT,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Corners.UPRIGHT
-                };
-
-                for (int i = 0; i < board.arrSize; i++)
-                {
-                    for (int j = board.range[i][0]; j <= board.range[i][1]; j++)
-                    {
-
-                        // Choose a random direction
-                        HexagonGrid<CenterData, EdgeData, CornerData>.Corners randDir = dir[(int)(CR.rng.NextDouble() * dir.Length)];
-
-                        // Random color in colors
-                        CornerData cd = new CornerData
-                        {
-                            hasSettlement = true,
-                            playerID = (int)(CR.rng.NextDouble() * (CR.colors.Length - 1) + 1)
-                        };
-                        board.SetAtCorner(cd, i, j, randDir);
-                    }
-                }
-            }
-            /** /
-            if (CR.newKeys.Contains(Keys.I))
-            {
-                HexagonGrid<CenterData, EdgeData, CornerData>.Edges[] dir =
-                {
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPLEFT,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UP,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.UPRIGHT,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNLEFT,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWN,
-                    HexagonGrid<CenterData, EdgeData, CornerData>.Edges.DOWNRIGHT
-                };
-
-                for (int i = 0; i < board.arrSize; i++)
-                {
-                    for (int j = board.range[i][0]; j <= board.range[i][1]; j++)
-                    {
-
-                        // Random color in colors
-                        EdgeData ed; ed.roadID = (int)(CR.rng.NextDouble() * (CR.colors.Length - 1) + 1);
-                        HexagonGrid<CenterData, EdgeData, CornerData>.Edges randDir = dir[(int)(CR.rng.NextDouble() * dir.Length)];
-                        board.SetAtEdge(ed, i, j, randDir);
-                    }
-                }
-            }
-            /** /
-            if (CR.newKeys.Contains(Keys.O))
-            {
-                for (int i = 0; i < board.arrSize; i++)
-                {
-                    for (int j = board.range[i][0]; j <= board.range[i][1]; j++)
-                    {
-                        if (CR.rng.NextDouble() > 0.80)
-                        {
-                            int rangeStart = 2;
-                            int rangeSize= 10;
-
-                            board.GetAt(i, j).number = (int)(CR.rng.NextDouble() * rangeSize + rangeStart);
-                        }
-                    }
-                }
-            }
 
             /*  Get currently selected hex  */
             if (CR.preKeys.Contains(Keys.LeftShift))
@@ -203,7 +129,7 @@ namespace CatanRemake.States
                     }
                     else if (CR.newKeys.Contains(Keys.D))
                     {
-                        cardSelect += cardSelect == cards.Count - 1 ? 0 : 1;
+                        cardSelect += cardSelect == players[turn].hand.Count - 1 ? 0 : 1;
                     }
                 }
                 else if (selected == "hex")
@@ -288,7 +214,7 @@ namespace CatanRemake.States
                 if (selected == "hex" && board.InRange(hovered[0] + 1, hovered[1]))
                     hovered[0]++;
                 else
-                    cardSelect += cardSelect == cards.Count - 1 ? 0 : 1;
+                    cardSelect += cardSelect == players[turn].hand.Count - 1 ? 0 : 1;
 
             }
             else if (newClick && HCGUIDLSelect.Contains(mousePos) && (selected == "hex" || selected == "cards"))
@@ -394,21 +320,6 @@ namespace CatanRemake.States
                 }
             }
 
-            /*  Draw every player    * /
-            for (int j = board.arrSize - 1; -1 < j; j--)
-            {
-                for (int i = 0; i < board.arrSize; i++)
-                {
-                    if (board.InRange(i, j))
-                    {
-                        CenterData cd = board.GetAt(i, j);
-
-                        foreach (int id in cd.players)
-                            DrawPlayers(i, j, start);
-                    }
-                }
-            }
-
             /*  Draw the robber  */
             DrawRobber(CR.cameraPos);
 
@@ -418,9 +329,9 @@ namespace CatanRemake.States
 
             /*  Draw the cards  */
             int index = 0;
-            foreach (string card in cards)
+            foreach (Card card in players[turn].hand)
             {
-                DrawCard(card, index);
+                DrawCard(card.cardString, index);
                 index++;
             }
 

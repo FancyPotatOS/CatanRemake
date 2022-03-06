@@ -186,7 +186,7 @@ namespace CatanRemake
             IsMouseVisible = true;
             IsMouseVisible = false;
 
-            currState = new Board();
+            currState = new Board(2);
         }
 
         protected override void Initialize()
